@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyright/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# Next.js
+my-app/.next/
+my-app/out/
+my-app/node_modules/
+my-app/.vercel/
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Runtime-generated files
+uploads/
+outputs/
+results/
+charts/
+
+# Local datasets
+data/
+*.csv
+*.xlsx
+*.xls
+*.parquet
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
