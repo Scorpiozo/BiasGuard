@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from utils.preprocessing import encode_binary_target
+from utils.preprocessing import encode_binary_pair, encode_binary_target
 
 
 def _safe_divide(
@@ -105,12 +105,9 @@ def equal_opportunity(
         ]
     ].dropna()
 
-    true_encoded, _ = encode_binary_target(
-        work[y_true]
-    )
-
-    pred_encoded, _ = encode_binary_target(
-        work[y_pred]
+    true_encoded, pred_encoded, _ = encode_binary_pair(
+        work[y_true],
+        work[y_pred],
     )
 
     work = work.copy()
@@ -178,12 +175,9 @@ def equalized_odds(
         ]
     ].dropna()
 
-    true_encoded, _ = encode_binary_target(
-        work[y_true]
-    )
-
-    pred_encoded, _ = encode_binary_target(
-        work[y_pred]
+    true_encoded, pred_encoded, _ = encode_binary_pair(
+        work[y_true],
+        work[y_pred],
     )
 
     work = work.copy()

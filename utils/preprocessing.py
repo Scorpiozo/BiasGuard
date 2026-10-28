@@ -107,6 +107,46 @@ def encode_binary_target(
     return encoded, mapping
 
 
+def encode_binary_pair(
+    y_true: pd.Series,
+    y_pred: pd.Series,
+) -> tuple[pd.Series, pd.Series, dict[Any, int]]:
+    """
+    Encode an actual-outcome column and a predicted-outcome column
+    with ONE shared 0/1 mapping, derived from their combined values.
+
+    Encoding the two columns independently (two separate calls to
+    encode_binary_target) is unsafe here: that function's mapping
+    depends on which value happens to appear first in that column's
+    row order, so y_true and y_pred can silently end up using
+    opposite conventions for "0" and "1" whenever their first rows
+    differ - which scrambles every accuracy/precision/recall/TPR/FPR
+    computed from the result, without raising any error.
+    """
+    combined = pd.concat(
+        [y_true, y_pred],
+        ignore_index=True,
+    ).dropna()
+
+    values = list(combined.unique())
+
+    if len(values) != 2:
+        raise ValueError(
+            "Binary pair encoding requires exactly two distinct "
+            f"classes across both columns combined; found {len(values)}."
+        )
+
+    mapping = {
+        values[0]: 0,
+        values[1]: 1,
+    }
+
+    true_encoded = y_true.map(mapping)
+    pred_encoded = y_pred.map(mapping)
+
+    return true_encoded, pred_encoded, mapping
+
+
 def safe_numeric(series: pd.Series) -> pd.Series:
     return pd.to_numeric(series, errors="coerce")
 

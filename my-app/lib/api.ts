@@ -337,7 +337,7 @@ export interface MitigationMetadata {
 
 export interface ComparisonSide {
   rows: number;
-  fairness: Record<string, unknown>;
+  fairness: FairnessResponse;
 }
 
 export interface MitigationComparison {
@@ -360,6 +360,37 @@ export interface MitigationResponse {
   charts: {
     fairness: Record<string, unknown>;
   };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Model evaluation (trains a small classifier, checks its fairness)
+// ─────────────────────────────────────────────────────────────
+
+export interface ModelEvaluationRequest {
+  dataset_id: string;
+  outcome: string;
+  protected_attribute: string;
+}
+
+export interface ModelPerformance {
+  accuracy: number;
+  precision: number;
+  recall: number;
+  f1: number;
+  roc_auc: number | null;
+  evaluated_rows: number;
+}
+
+export interface ModelEvaluationResponse {
+  model: string;
+  outcome: string;
+  protected_attribute: string;
+  feature_columns: string[];
+  skipped_columns: string[];
+  train_rows: number;
+  test_rows: number;
+  performance: ModelPerformance;
+  fairness: FairnessResponse;
 }
 
 export interface BarChartDatum {
@@ -557,6 +588,34 @@ export async function mitigateBias(
     method: "POST",
     body: JSON.stringify(request),
   });
+}
+
+/**
+ * POST /api/model/evaluate
+ * Train a small classifier on the chosen outcome and check whether
+ * its predictions are fair across the chosen group.
+ */
+export async function evaluateModel(
+  request: ModelEvaluationRequest
+): Promise<ModelEvaluationResponse> {
+  return fetchAPI<ModelEvaluationResponse>("/api/model/evaluate", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
+
+/**
+ * GET /api/datasets/{dataset_id}/download
+ * Download a stored dataset (including a mitigated one) as CSV.
+ */
+export function datasetDownloadUrl(
+  datasetId: string,
+  filename?: string
+): string {
+  const params = filename
+    ? `?${new URLSearchParams({ filename })}`
+    : "";
+  return `${API_URL}/api/datasets/${datasetId}/download${params}`;
 }
 
 /**

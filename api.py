@@ -10,6 +10,7 @@ from typing import Any
 import pandas as pd
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from detector.detector import (
@@ -29,6 +30,7 @@ from detector.scan import DatasetScanner
 
 from evaluation.comparison import compare_datasets
 from evaluation.fairness import fairness_report
+from evaluation.model import ModelTrainingError, train_and_evaluate
 from evaluation.performance import performance_report
 
 from optimizer.optimizer import (
@@ -149,6 +151,12 @@ class PerformanceRequest(BaseModel):
     dataset_id: str
     y_true: str
     y_pred: str
+
+
+class ModelEvaluationRequest(BaseModel):
+    dataset_id: str
+    outcome: str
+    protected_attribute: str
 
 
 # ---------------------------------------------------------
@@ -342,6 +350,39 @@ def dataset_preview(
         "columns": df.columns.tolist(),
         "preview": preview,
     }
+
+
+# ---------------------------------------------------------
+# Dataset download (CSV)
+# ---------------------------------------------------------
+
+@app.get("/api/datasets/{dataset_id}/download")
+def download_dataset(
+    dataset_id: str,
+    filename: str = "dataset.csv",
+) -> StreamingResponse:
+    """
+    Download any stored dataset as CSV - including a mitigated
+    dataset produced by /api/mitigate, whose id is otherwise only
+    ever held in memory.
+    """
+    df = get_dataset(dataset_id)
+
+    buffer = io.StringIO()
+    df.to_csv(buffer, index=False)
+    buffer.seek(0)
+
+    safe_filename = filename.strip() or "dataset.csv"
+    if not safe_filename.lower().endswith(".csv"):
+        safe_filename += ".csv"
+
+    return StreamingResponse(
+        iter([buffer.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_filename}"'
+        },
+    )
 
 
 # ---------------------------------------------------------
@@ -586,6 +627,43 @@ def mitigate(
         raise HTTPException(
             status_code=400,
             detail=str(exc),
+        ) from exc
+
+
+# ---------------------------------------------------------
+# Model evaluation (binary outcomes only)
+# ---------------------------------------------------------
+
+@app.post("/api/model/evaluate")
+def evaluate_model(
+    request: ModelEvaluationRequest,
+) -> dict[str, Any]:
+    """
+    Train a small logistic-regression model to predict the chosen
+    outcome, then report both its performance and whether its own
+    predictions are fair across the chosen group. This checks whether
+    bias in the raw data carries through into a trained model's
+    decisions, which a dataset-level scan alone can't show.
+    """
+    df = get_dataset(request.dataset_id)
+
+    try:
+        return train_and_evaluate(
+            df,
+            request.outcome,
+            request.protected_attribute,
+        )
+
+    except ModelTrainingError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Could not train a model: {exc}",
         ) from exc
 
 

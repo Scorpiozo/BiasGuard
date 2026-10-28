@@ -8,6 +8,7 @@ import DatasetUploader from "./DatasetUploader";
 import DatasetScan from "./DatasetScan";
 import BiasDetectionPanel from "./BiasDetectionPanel";
 import FairnessMetrics from "./FairnessMetrics";
+import ModelFairnessPanel from "./ModelFairnessPanel";
 import MitigationPanel from "./MitigationPanel";
 import ChartPanel from "./ChartPanel";
 import {
@@ -107,6 +108,9 @@ export default function BiasAnalyzerDashboard() {
 
   const isBinaryOutcome = state.analysisResult?.task_type === "binary_classification";
   const primaryGroup = state.groups[0] || "";
+  const primaryGroupImbalanceRatio =
+    state.analysisResult?.group_analysis[primaryGroup]?.representation
+      .imbalance_ratio ?? null;
 
   const workflow = [
     {
@@ -475,6 +479,17 @@ export default function BiasAnalyzerDashboard() {
             </div>
           )}
 
+          {/* Model training — binary-only, shows whether a trained
+              classifier inherits the bias found in the raw data */}
+          {state.outcome && isBinaryOutcome && (
+            <ModelFairnessPanel
+              datasetId={state.datasetId}
+              outcome={state.outcome}
+              protectedAttribute={primaryGroup}
+              onError={handleError}
+            />
+          )}
+
           {/* Mitigation — binary-only advanced tool */}
           {state.outcome && isBinaryOutcome && (
             <Card
@@ -502,6 +517,8 @@ export default function BiasAnalyzerDashboard() {
                   datasetId={state.datasetId}
                   target={state.outcome}
                   protectedAttribute={primaryGroup}
+                  imbalanceRatio={primaryGroupImbalanceRatio}
+                  rowCount={state.rows}
                   onError={handleError}
                 />
               </div>

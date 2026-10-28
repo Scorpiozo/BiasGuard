@@ -11,7 +11,7 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
-from utils.preprocessing import encode_binary_target
+from utils.preprocessing import encode_binary_pair
 
 
 def performance_report(
@@ -31,12 +31,9 @@ def performance_report(
             "No complete rows exist for performance evaluation."
         )
 
-    true_encoded, _ = encode_binary_target(
-        work[y_true]
-    )
-
-    pred_encoded, _ = encode_binary_target(
-        work[y_pred]
+    true_encoded, pred_encoded, _ = encode_binary_pair(
+        work[y_true],
+        work[y_pred],
     )
 
     accuracy = accuracy_score(
