@@ -170,7 +170,7 @@ export default function ModelFairnessPanel({
 
       {/* Is it fair */}
       <div className="border-t border-[var(--border)] pt-6">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-medium uppercase tracking-widest text-[var(--muted)]">
             Is the model&apos;s decision fair across {protectedAttribute}?
           </p>
@@ -181,9 +181,9 @@ export default function ModelFairnessPanel({
           {dp.groups.map((g) => (
             <div
               key={g.group}
-              className="flex justify-between items-center p-2.5 bg-[var(--surface-secondary)] rounded-lg text-sm"
+              className="flex flex-col gap-1 p-2.5 bg-[var(--surface-secondary)] rounded-lg text-sm sm:flex-row sm:items-center sm:justify-between"
             >
-              <span>{g.group}</span>
+              <span className="min-w-0 truncate">{g.group}</span>
               <span className="font-medium tabular-nums">
                 predicted positive {pct(g.selection_rate)} of the time ·
                 n={g.count}
@@ -205,7 +205,7 @@ export default function ModelFairnessPanel({
 
         {eo && eoBadge && (
           <div className="mt-4 rounded-lg border border-[var(--border)] p-4">
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-medium uppercase tracking-widest text-[var(--muted)]">
                 Equal opportunity (among people who actually qualify)
               </p>
@@ -215,9 +215,9 @@ export default function ModelFairnessPanel({
               {eo.groups.map((g) => (
                 <div
                   key={g.group}
-                  className="flex justify-between items-center p-2 bg-[var(--surface-secondary)] rounded-md text-sm"
+                  className="flex flex-col gap-1 p-2 bg-[var(--surface-secondary)] rounded-md text-sm sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <span>{g.group}</span>
+                  <span className="min-w-0 truncate">{g.group}</span>
                   <span className="font-medium tabular-nums">
                     correctly identified {pct(g.true_positive_rate)} of the
                     time

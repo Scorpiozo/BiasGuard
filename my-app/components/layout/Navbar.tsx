@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import ThemeToggle from "../ui/ThemeToggle";
 import ApiStatus from "../ui/ApiStatus";
 
 export default function Navbar() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <nav
       className="
@@ -42,12 +45,13 @@ export default function Navbar() {
         "
       />
 
-      <div className="relative mx-auto flex h-14 max-w-7xl items-center justify-between px-6 lg:px-10">
+      <div className="relative mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-10">
         {/* Brand */}
         <a
           href="#top"
           aria-label="BiasGuard home"
-          className="group flex items-center gap-3"
+          className="group flex min-w-0 items-center gap-3"
+          onClick={() => setMenuOpen(false)}
         >
           <div
             className="
@@ -79,7 +83,7 @@ export default function Navbar() {
             </span>
           </div>
 
-          <span className="text-[15px] font-semibold tracking-tight">
+          <span className="truncate text-[15px] font-semibold tracking-tight">
             BiasGuard
           </span>
         </a>
@@ -179,30 +183,88 @@ export default function Navbar() {
             <ApiStatus />
           </div>
 
-          {/* Mobile analyze */}
-          <a
-            href="#analyze"
+          <ThemeToggle />
+
+          {/* Mobile menu toggle */}
+          <button
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-nav-menu"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
             className="
-              rounded-[4px]
-              border border-[var(--border)]
-              bg-[var(--surface)]/70
-              px-3 py-2
-              text-xs
-              font-medium
+              flex h-9 w-9 shrink-0 items-center justify-center
+              rounded-[4px] border border-[var(--border)]
+              bg-[var(--surface)]
               text-[var(--foreground)]
-              backdrop-blur-sm
               transition-all duration-200
               hover:border-[var(--border-strong)]
               hover:bg-[var(--surface-secondary)]
               md:hidden
             "
           >
-            Analyze
-          </a>
-
-          <ThemeToggle />
+            <span className="relative flex h-3.5 w-4 flex-col justify-between">
+              <span
+                className={`block h-px w-full bg-current transition-transform duration-200 ${
+                  menuOpen ? "translate-y-[6.5px] rotate-45" : ""
+                }`}
+              />
+              <span
+                className={`block h-px w-full bg-current transition-opacity duration-200 ${
+                  menuOpen ? "opacity-0" : "opacity-100"
+                }`}
+              />
+              <span
+                className={`block h-px w-full bg-current transition-transform duration-200 ${
+                  menuOpen ? "-translate-y-[6.5px] -rotate-45" : ""
+                }`}
+              />
+            </span>
+          </button>
         </div>
       </div>
+
+      {/* Mobile navigation panel */}
+      {menuOpen && (
+        <div
+          id="mobile-nav-menu"
+          className="relative border-t border-[var(--border)] bg-[var(--surface)] px-4 py-3 md:hidden"
+        >
+          <div className="flex flex-col gap-1">
+            <a
+              href="#about"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-[4px] px-3 py-2.5 text-sm text-[var(--muted)] transition-colors hover:bg-[var(--surface-secondary)] hover:text-[var(--foreground)]"
+            >
+              Overview
+            </a>
+
+            <a
+              href="#how-it-works"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-[4px] px-3 py-2.5 text-sm text-[var(--muted)] transition-colors hover:bg-[var(--surface-secondary)] hover:text-[var(--foreground)]"
+            >
+              How it works
+            </a>
+
+            <a
+              href="#analyze"
+              onClick={() => setMenuOpen(false)}
+              className="mt-1 flex items-center gap-2 rounded-[4px] bg-[var(--foreground)] px-3 py-2.5 text-sm font-medium text-[var(--background)] transition-all hover:opacity-90"
+            >
+              <span
+                className="h-1.5 w-1.5 rounded-full"
+                style={{ backgroundColor: "var(--teal)" }}
+              />
+              Analyze dataset
+            </a>
+
+            <div className="mt-2 border-t border-[var(--border)] pt-2 sm:hidden">
+              <ApiStatus />
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

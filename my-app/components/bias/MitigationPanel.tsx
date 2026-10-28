@@ -11,7 +11,9 @@ import {
 
 interface MitigationPanelProps {
   datasetId: string;
-  target: string;
+  /** The outcome column, if one was chosen. Mitigation works without one. */
+  outcome?: string | null;
+  taskType?: string | null;
   protectedAttribute: string;
   /** smallest-group / largest-group ratio for protectedAttribute, 0-1 */
   imbalanceRatio?: number | null;
@@ -86,7 +88,8 @@ const METHODS: MethodInfo[] = [
 
 function recommend(
   imbalanceRatio: number | null | undefined,
-  rowCount: number | undefined
+  rowCount: number | undefined,
+  smoteAvailable: boolean
 ): { id: MethodId; reason: string } {
   const ratio = imbalanceRatio ?? null;
   const rows = rowCount ?? 0;
@@ -107,7 +110,7 @@ function recommend(
     };
   }
 
-  if (ratio !== null && ratio < 0.3 && rows >= 300) {
+  if (smoteAvailable && ratio !== null && ratio < 0.3 && rows >= 300) {
     return {
       id: "smote",
       reason:
@@ -136,7 +139,8 @@ function pct(value: number | null | undefined) {
 
 export default function MitigationPanel({
   datasetId,
-  target,
+  outcome,
+  taskType,
   protectedAttribute,
   imbalanceRatio,
   rowCount,
@@ -147,7 +151,8 @@ export default function MitigationPanel({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<MitigationResponse | null>(null);
 
-  const recommended = recommend(imbalanceRatio, rowCount);
+  const hasBinaryOutcome = Boolean(outcome) && taskType === "binary_classification";
+  const recommended = recommend(imbalanceRatio, rowCount, hasBinaryOutcome);
 
   const handleMitigate = async () => {
     if (!selectedMethod) return;
@@ -157,7 +162,7 @@ export default function MitigationPanel({
     try {
       const response = await mitigateBias({
         dataset_id: datasetId,
-        target,
+        target: outcome ?? null,
         protected_attribute: protectedAttribute,
         method: selectedMethod,
       });
@@ -173,12 +178,18 @@ export default function MitigationPanel({
 
   if (result) {
     const method = METHODS.find((m) => m.id === selectedMethod);
-    const beforeDp = result.comparison.before.fairness.demographic_parity;
-    const afterDp = result.comparison.after.fairness.demographic_parity;
-
+    const beforeFairness = result.comparison.before.fairness;
+    const afterFairness = result.comparison.after.fairness;
+    const beforeDp = beforeFairness?.demographic_parity;
+    const afterDp = afterFairness?.demographic_parity;
     const beforeByGroup = new Map(
-      beforeDp.groups.map((g) => [g.group, g.selection_rate])
+      beforeDp?.groups.map((g) => [g.group, g.selection_rate]) ?? []
     );
+
+    const beforeOutcome = result.comparison.before.outcome_comparison;
+    const afterOutcome = result.comparison.after.outcome_comparison;
+    const outcomeGapBefore = result.comparison.changes.outcome_gap_before;
+    const outcomeGapAfter = result.comparison.changes.outcome_gap_after;
 
     return (
       <div className="space-y-6">
@@ -203,53 +214,85 @@ export default function MitigationPanel({
           <p className="text-sm leading-6">{result.comparison.interpretation}</p>
         </div>
 
-        {/* Before / after per group */}
-        <div>
-          <p className="mb-3 text-xs font-medium uppercase tracking-widest text-[var(--muted)]">
-            Selection rate by group, before → after
-          </p>
-          <div className="space-y-2">
-            {afterDp.groups.map((g) => {
-              const before = beforeByGroup.get(g.group);
-              return (
-                <div
-                  key={g.group}
-                  className="flex items-center justify-between gap-3 rounded-lg bg-[var(--surface-secondary)] p-3 text-sm"
-                >
-                  <span className="font-medium">{g.group}</span>
-                  <span className="tabular-nums text-[var(--muted)]">
-                    {pct(before)}{" "}
-                    <span className="text-[var(--foreground)]">→</span>{" "}
-                    <span className="font-semibold text-[var(--foreground)]">
-                      {pct(g.selection_rate)}
+        {/* Case A: binary outcome - selection rate by group */}
+        {beforeDp && afterDp && (
+          <div>
+            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-[var(--muted)]">
+              Selection rate by group, before → after
+            </p>
+            <div className="space-y-2">
+              {afterDp.groups.map((g) => {
+                const before = beforeByGroup.get(g.group);
+                return (
+                  <div
+                    key={g.group}
+                    className="flex flex-col gap-1 rounded-lg bg-[var(--surface-secondary)] p-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                  >
+                    <span className="min-w-0 truncate font-medium">{g.group}</span>
+                    <span className="tabular-nums text-[var(--muted)]">
+                      {pct(before)}{" "}
+                      <span className="text-[var(--foreground)]">→</span>{" "}
+                      <span className="font-semibold text-[var(--foreground)]">
+                        {pct(g.selection_rate)}
+                      </span>
                     </span>
-                  </span>
-                </div>
-              );
-            })}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Case B: multiclass/continuous outcome - gap metric only */}
+        {!beforeDp && (outcomeGapBefore !== undefined || beforeOutcome || afterOutcome) && (
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-secondary)] px-4 py-3">
+            <p className="text-xs font-medium uppercase tracking-widest text-[var(--muted)] mb-2">
+              Outcome gap across groups, before → after
+            </p>
+            <p className="text-sm font-mono">
+              {fmtDelta(outcomeGapBefore, 3).replace("+", "")} →{" "}
+              {fmtDelta(outcomeGapAfter, 3).replace("+", "")}
+            </p>
+          </div>
+        )}
+
+        {/* Case C: no outcome at all - representation only, covered by the headline tiles below */}
 
         {/* Headline deltas */}
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-md bg-[var(--surface-secondary)] p-3">
-            <p className="text-[11px] uppercase tracking-widest text-[var(--muted)] mb-1">
-              Selection Rate Gap
-            </p>
-            <p className="text-sm font-medium font-mono">
-              {pct(beforeDp.selection_rate_gap)} →{" "}
-              {pct(afterDp.selection_rate_gap)}
-            </p>
-          </div>
-          <div className="rounded-md bg-[var(--surface-secondary)] p-3">
-            <p className="text-[11px] uppercase tracking-widest text-[var(--muted)] mb-1">
-              Disparate Impact
-            </p>
-            <p className="text-sm font-medium font-mono">
-              {fmtDelta(beforeDp.disparate_impact, 3).replace("+", "")} →{" "}
-              {fmtDelta(afterDp.disparate_impact, 3).replace("+", "")}
-            </p>
-          </div>
+          {beforeDp && afterDp ? (
+            <>
+              <div className="rounded-md bg-[var(--surface-secondary)] p-3">
+                <p className="text-[11px] uppercase tracking-widest text-[var(--muted)] mb-1">
+                  Selection Rate Gap
+                </p>
+                <p className="text-sm font-medium font-mono">
+                  {pct(beforeDp.selection_rate_gap)} →{" "}
+                  {pct(afterDp.selection_rate_gap)}
+                </p>
+              </div>
+              <div className="rounded-md bg-[var(--surface-secondary)] p-3">
+                <p className="text-[11px] uppercase tracking-widest text-[var(--muted)] mb-1">
+                  Disparate Impact
+                </p>
+                <p className="text-sm font-medium font-mono">
+                  {fmtDelta(beforeDp.disparate_impact, 3).replace("+", "")} →{" "}
+                  {fmtDelta(afterDp.disparate_impact, 3).replace("+", "")}
+                </p>
+              </div>
+            </>
+          ) : (
+            <div className="rounded-md bg-[var(--surface-secondary)] p-3 sm:col-span-2">
+              <p className="text-[11px] uppercase tracking-widest text-[var(--muted)] mb-1">
+                {outcome ? "Outcome Gap" : "Group Representation"}
+              </p>
+              <p className="text-sm font-medium font-mono">
+                {outcome
+                  ? `${fmtDelta(outcomeGapBefore, 3).replace("+", "")} → ${fmtDelta(outcomeGapAfter, 3).replace("+", "")}`
+                  : "Rebalanced by group only — no outcome selected"}
+              </p>
+            </div>
+          )}
           <div className="rounded-md bg-[var(--surface-secondary)] p-3">
             <p className="text-[11px] uppercase tracking-widest text-[var(--muted)] mb-1">
               Row Count Change
@@ -302,26 +345,38 @@ export default function MitigationPanel({
   return (
     <div className="space-y-5">
       <p className="text-sm leading-6 text-[var(--muted)]">
-        Each method changes <strong>{target}</strong> and{" "}
-        <strong>{protectedAttribute}</strong> differently — some add rows,
-        some remove them, one doesn&apos;t touch the data at all. Pick based
-        on what you can afford to change.
+        Each method rebalances <strong>{protectedAttribute}</strong>{" "}
+        differently — some add rows, some remove them, one doesn&apos;t touch
+        the data at all.
+        {outcome ? (
+          <>
+            {" "}
+            Since you chose <strong>{outcome}</strong> as the outcome, the
+            results below will also show how the gap in that outcome changes.
+          </>
+        ) : (
+          " No outcome is selected, so results will compare group representation only — that's still useful on its own."
+        )}{" "}
+        Pick based on what you can afford to change.
       </p>
 
       <div className="grid gap-3">
         {METHODS.map((method) => {
           const selected = selectedMethod === method.id;
           const isRecommended = method.id === recommended.id;
+          const disabled = method.id === "smote" && !hasBinaryOutcome;
 
           return (
             <label
               key={method.id}
               className={`
-                flex flex-col gap-2 p-4 rounded-lg border cursor-pointer transition
+                flex flex-col gap-2 p-4 rounded-lg border transition
+                ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
                 ${
                   selected
                     ? "border-[var(--teal)] bg-[var(--teal-soft)]"
-                    : "border-[var(--border)] hover:bg-[var(--surface-secondary)]"
+                    : "border-[var(--border)] " +
+                      (disabled ? "" : "hover:bg-[var(--surface-secondary)]")
                 }
               `}
             >
@@ -331,6 +386,7 @@ export default function MitigationPanel({
                   name="method"
                   value={method.id}
                   checked={selected}
+                  disabled={disabled}
                   onChange={() => setSelectedMethod(method.id)}
                   className="w-4 h-4 accent-[var(--teal)] mt-0.5 flex-shrink-0"
                 />
@@ -339,7 +395,7 @@ export default function MitigationPanel({
                     <p className="text-sm font-semibold text-[var(--foreground)]">
                       {method.name}
                     </p>
-                    {isRecommended && (
+                    {isRecommended && !disabled && (
                       <Badge variant="teal">Recommended</Badge>
                     )}
                     <Badge variant="neutral">
@@ -351,10 +407,17 @@ export default function MitigationPanel({
                   <p className="text-xs text-[var(--muted)] mt-1">
                     {method.summary}
                   </p>
+                  {disabled && (
+                    <p className="text-xs text-[var(--orange)] mt-1">
+                      Needs a binary outcome (exactly two classes) — choose
+                      one as the outcome to unlock SMOTE, or use one of the
+                      other methods, which work without one.
+                    </p>
+                  )}
                 </div>
               </div>
 
-              <div className="ml-7 space-y-1.5 text-xs leading-5 text-[var(--muted)]">
+              <div className="ml-1 space-y-1.5 text-xs leading-5 text-[var(--muted)] sm:ml-7">
                 <p>
                   <span className="font-medium text-[var(--foreground)]">
                     How it works:

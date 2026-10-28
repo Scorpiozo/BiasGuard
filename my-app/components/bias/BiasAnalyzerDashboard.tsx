@@ -490,8 +490,9 @@ export default function BiasAnalyzerDashboard() {
             />
           )}
 
-          {/* Mitigation — binary-only advanced tool */}
-          {state.outcome && isBinaryOutcome && (
+          {/* Mitigation — works for any outcome type, or no outcome at all.
+              Only SMOTE (inside MitigationPanel) needs a binary outcome. */}
+          {state.groups.length > 0 && (
             <Card
               title="mitigate.run"
               accent="var(--red)"
@@ -508,14 +509,15 @@ export default function BiasAnalyzerDashboard() {
 
                 <p className="mt-1 text-sm text-[var(--muted)]">
                   Apply a supported strategy and compare the resulting
-                  fairness metrics.
+                  metrics.
                 </p>
               </div>
 
               <div className="p-5">
                 <MitigationPanel
                   datasetId={state.datasetId}
-                  target={state.outcome}
+                  outcome={state.outcome}
+                  taskType={state.analysisResult?.task_type}
                   protectedAttribute={primaryGroup}
                   imbalanceRatio={primaryGroupImbalanceRatio}
                   rowCount={state.rows}

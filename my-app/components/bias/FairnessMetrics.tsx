@@ -100,9 +100,9 @@ export default function FairnessMetrics({
           {dp.groups.map((g) => (
             <div
               key={g.group}
-              className="flex justify-between items-center p-2.5 bg-[var(--surface-secondary)] rounded-lg text-sm"
+              className="flex flex-col gap-1 p-2.5 bg-[var(--surface-secondary)] rounded-lg text-sm sm:flex-row sm:items-center sm:justify-between"
             >
-              <span>{g.group}</span>
+              <span className="min-w-0 truncate">{g.group}</span>
               <span className="font-medium tabular-nums">
                 {(g.selection_rate * 100).toFixed(1)}% selected · n={g.count}
               </span>
@@ -146,9 +146,9 @@ export default function FairnessMetrics({
             {metrics.equal_opportunity.groups.map((g) => (
               <div
                 key={g.group}
-                className="flex justify-between items-center p-2.5 bg-[var(--surface-secondary)] rounded-lg text-sm"
+                className="flex flex-col gap-1 p-2.5 bg-[var(--surface-secondary)] rounded-lg text-sm sm:flex-row sm:items-center sm:justify-between"
               >
-                <span>{g.group}</span>
+                <span className="min-w-0 truncate">{g.group}</span>
                 <span className="font-medium tabular-nums">
                   TPR: {fmt(g.true_positive_rate, 3)}
                 </span>
@@ -174,9 +174,9 @@ export default function FairnessMetrics({
             {metrics.equalized_odds.groups.map((g) => (
               <div
                 key={g.group}
-                className="flex justify-between items-center p-2.5 bg-[var(--surface-secondary)] rounded-lg text-sm"
+                className="flex flex-col gap-1 p-2.5 bg-[var(--surface-secondary)] rounded-lg text-sm sm:flex-row sm:items-center sm:justify-between"
               >
-                <span>{g.group}</span>
+                <span className="min-w-0 truncate">{g.group}</span>
                 <span className="font-medium tabular-nums">
                   TPR: {fmt(g.true_positive_rate, 3)} · FPR:{" "}
                   {fmt(g.false_positive_rate, 3)}
@@ -184,7 +184,7 @@ export default function FairnessMetrics({
               </div>
             ))}
           </div>
-          <div className="flex gap-6 text-xs text-[var(--muted)]">
+          <div className="flex flex-wrap gap-4 sm:gap-6 text-xs text-[var(--muted)]">
             <p>
               TPR gap:{" "}
               <span className="font-medium text-[var(--foreground)] font-mono">

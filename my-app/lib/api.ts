@@ -322,9 +322,9 @@ export interface PerformanceResponse {
 
 export interface MitigationRequest {
   dataset_id: string;
-  target: string;
   protected_attribute: string;
   method: string;
+  target?: string | null;
 }
 
 export interface MitigationMetadata {
@@ -335,20 +335,36 @@ export interface MitigationMetadata {
   [key: string]: unknown;
 }
 
+export interface RepresentationByGroup {
+  [key: string]: unknown;
+}
+
+export interface OutcomeComparisonByGroup {
+  max_distribution_gap?: number | null;
+  relative_mean_gap?: number | null;
+  [key: string]: unknown;
+}
+
 export interface ComparisonSide {
   rows: number;
-  fairness: FairnessResponse;
+  representation: RepresentationByGroup;
+  fairness?: FairnessResponse;
+  outcome_comparison?: OutcomeComparisonByGroup;
 }
 
 export interface MitigationComparison {
   before: ComparisonSide;
   after: ComparisonSide;
   changes: {
-    selection_rate_gap: number;
-    disparate_impact: number;
     row_count: number;
+    selection_rate_gap?: number | null;
+    disparate_impact?: number | null;
+    outcome_gap_before?: number | null;
+    outcome_gap_after?: number | null;
+    outcome_gap_change?: number | null;
     [key: string]: unknown;
   };
+  task_type: string | null;
   interpretation: string;
 }
 
@@ -358,7 +374,8 @@ export interface MitigationResponse {
   metadata: MitigationMetadata;
   comparison: MitigationComparison;
   charts: {
-    fairness: Record<string, unknown>;
+    fairness?: Record<string, unknown>;
+    [key: string]: unknown;
   };
 }
 

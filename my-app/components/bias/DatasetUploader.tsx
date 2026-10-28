@@ -98,7 +98,7 @@ export default function DatasetUploader({
         }
       `}
     >
-      <div className="flex flex-col items-center justify-center gap-5 px-8 py-16 text-center">
+      <div className="flex flex-col items-center justify-center gap-5 px-4 py-10 text-center sm:px-8 sm:py-16">
         <div
           className={`flex h-12 w-12 items-center justify-center rounded-[6px] border transition-colors ${
             loading

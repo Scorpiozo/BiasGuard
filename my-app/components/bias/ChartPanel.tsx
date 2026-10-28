@@ -79,9 +79,9 @@ export default function ChartPanel({
             const percentage = (count / maxRepCount) * 100;
             return (
               <div key={d.group}>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-medium">{d.group}</span>
-                  <span className="text-xs text-[var(--muted)] tabular-nums">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="min-w-0 truncate text-sm font-medium">{d.group}</span>
+                  <span className="shrink-0 text-xs text-[var(--muted)] tabular-nums">
                     {count.toLocaleString()}
                   </span>
                 </div>
