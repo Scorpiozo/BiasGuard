@@ -135,9 +135,9 @@ class AnalysisRequest(BaseModel):
 
 class MitigationRequest(BaseModel):
     dataset_id: str
-    target: str
     protected_attribute: str
     method: str
+    target: str | None = None
 
 
 class FairnessRequest(BaseModel):
@@ -557,7 +557,16 @@ def calculate_performance(
 def mitigate(
     request: MitigationRequest,
 ) -> dict[str, Any]:
+    """
+    Apply a mitigation method to rebalance the chosen group.
 
+    An outcome column is optional: oversampling, undersampling, and
+    reweighting only rebalance group representation and work with no
+    outcome at all. SMOTE is the one method that needs a binary
+    outcome, since it generates synthetic examples stratified by
+    class - requesting it without one (or with a non-binary one)
+    returns a clear error rather than silently failing.
+    """
     df = get_dataset(request.dataset_id)
 
     method = request.method.lower().strip()
@@ -573,16 +582,20 @@ def mitigate(
         )
 
     try:
-        validate_target_and_protected(
-            df,
-            request.target,
-            [request.protected_attribute],
-        )
+        task_type: str | None = None
+
+        if request.target:
+            validate_outcome_column(
+                df, request.target, [request.protected_attribute]
+            )
+            task_type = infer_task_type(df[request.target])
+        else:
+            validate_groups(df, [request.protected_attribute])
 
         optimizer = BiasOptimizer(
             df,
-            request.target,
             request.protected_attribute,
+            request.target,
         )
 
         mitigated_df, metadata = optimizer.apply(
@@ -592,24 +605,21 @@ def mitigate(
         comparison = compare_datasets(
             df,
             mitigated_df,
-            request.target,
             request.protected_attribute,
+            request.target,
+            task_type,
         )
 
-        before_dp = comparison["before"][
-            "fairness"
-        ]["demographic_parity"]
+        charts: dict[str, Any] = {}
 
-        after_dp = comparison["after"][
-            "fairness"
-        ]["demographic_parity"]
+        if task_type == "binary_classification" and "fairness" in comparison["before"]:
+            before_dp = comparison["before"]["fairness"]["demographic_parity"]
+            after_dp = comparison["after"]["fairness"]["demographic_parity"]
 
-        charts = {
-            "fairness": fairness_comparison_chart(
+            charts["fairness"] = fairness_comparison_chart(
                 before_dp,
                 after_dp,
             )
-        }
 
         mitigated_id = str(uuid.uuid4())
 

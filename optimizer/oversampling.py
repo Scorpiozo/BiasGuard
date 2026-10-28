@@ -6,7 +6,7 @@ import pandas as pd
 def oversample_minority_groups(
     df: pd.DataFrame,
     protected_attribute: str,
-    target: str,
+    target: str | None = None,
     random_state: int = 42,
 ) -> pd.DataFrame:
     """

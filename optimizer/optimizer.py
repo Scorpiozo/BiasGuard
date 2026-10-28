@@ -30,8 +30,8 @@ class BiasOptimizer:
     def __init__(
         self,
         df: pd.DataFrame,
-        target: str,
         protected_attribute: str,
+        target: str | None = None,
     ):
         self.df = df
         self.target = target
@@ -47,6 +47,19 @@ class BiasOptimizer:
             raise ValueError(
                 f"Unsupported mitigation method '{method}'. "
                 f"Choose from {sorted(SUPPORTED_METHODS)}."
+            )
+
+        # Oversampling, undersampling, and reweighting only rebalance
+        # by group (protected_attribute) - they don't need an outcome
+        # at all. SMOTE is the one method that genuinely requires a
+        # binary outcome, because it generates synthetic examples
+        # stratified by class.
+        if method == "smote" and not self.target:
+            raise ValueError(
+                "SMOTE requires an outcome column with exactly two "
+                "classes - choose a binary outcome, or use "
+                "oversampling, undersampling, or reweighting instead, "
+                "which work without one."
             )
 
         if method == "oversampling":

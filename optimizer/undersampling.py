@@ -6,7 +6,7 @@ import pandas as pd
 def undersample_majority_groups(
     df: pd.DataFrame,
     protected_attribute: str,
-    target: str,
+    target: str | None = None,
     random_state: int = 42,
 ) -> pd.DataFrame:
     """
